@@ -4,6 +4,7 @@ import regex as re
 import itertools
 import collections
 import os
+import pickle
 
 PAT = r"""'(?:[sdmt]|ll|ve|re)| ?\p{L}+| ?\p{N}+| ?[^\s\p{L}\p{N}]+|\s+(?!\S)|\s+"""
 
@@ -15,6 +16,23 @@ def pretokenize(chunk: str, special_tokens: list[str]) -> Iterable[str]:
     return (
         match.group(0) for chunk in split_chunks for match in re.finditer(PAT, chunk)
     )
+
+
+def pretokenize_include_special_tokens(
+    chunk: str, special_tokens: list[str]
+) -> list[str]:
+    if not special_tokens:
+        return [chunk]
+
+    pattern = (
+        "("
+        + "|".join(
+            re.escape(token) for token in sorted(special_tokens, key=len, reverse=True)
+        )
+        + ")"
+    )
+
+    return [part for part in re.split(pattern, chunk) if part]
 
 
 def most_frequent_item(
@@ -95,21 +113,52 @@ def train_bpe(
         return vocabulary, merges
 
 
-# class Tokenizer:
-#     def __init__(self, vocab, merges, special_tokens=None):
-#         self.vocab = vocab
-#         self.merges = merges
-#         self.special_tokens = special_tokens
+class Tokenizer:
+    def __init__(
+        self,
+        vocab: dict[int, bytes],
+        merges: list[tuple[bytes, bytes]],
+        special_tokens=None,
+    ):
+        self.vocab = vocab
+        self.bytes_to_token = {v: k for k, v in vocab.items()}
+        self.merges = merges
+        self.special_tokens: list[str] = special_tokens if special_tokens else []
 
-#     @classmethod
-#     def from_files(cls, vocab_filepath, merges_filepath, special_tokens=None):
-#         pass
+    @classmethod
+    def from_files(cls, vocab_filepath, merges_filepath, special_tokens=None):
+        with open(vocab_filepath, "rb") as file:
+            vocab = pickle.load(file)
 
-#     def encode(self, text: str) -> list[int]:
-#         pass
+        with open(merges_filepath, "rb") as file:
+            merges = pickle.load(file)
 
-#     def encode_iterable(self, iterable: Iterable[str]) -> Iterable[int]:
-#         pass
+        return cls(vocab, merges, special_tokens)
 
-#     def decode(self, ids: list[int]):
-#         pass
+    def encode(self, text: str) -> list[int]:
+        words = pretokenize_include_special_tokens(text, self.special_tokens)
+        word_tokens: list[list[int]] = []
+        for word in words:
+            word_bytes = word.encode("utf-8")
+            if word in self.special_tokens:
+                word_tokens.append([self.bytes_to_token[word_bytes]])
+                continue
+            word_bytes = [bytes([i]) for i in word_bytes]
+            for s1, s2 in self.merges:
+                i = 0
+                while i < len(word_bytes) - 1:
+                    if (word_bytes[i], word_bytes[i + 1]) == (s1, s2):
+                        word_bytes[i : i + 2] = [s1 + s2]
+                    else:
+                        i += 1
+
+            tokens = [self.bytes_to_token[i] for i in word_bytes]
+            word_tokens.append(tokens)
+        return [x for xs in word_tokens for x in xs]
+
+    def encode_iterable(self, iterable: Iterable[str]) -> Iterable[int]:
+        for text in iterable:
+            yield from self.encode(text)
+
+    def decode(self, ids: list[int]) -> str:
+        return b"".join([self.vocab[id] for id in ids]).decode("utf-8")
