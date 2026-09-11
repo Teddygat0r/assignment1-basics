@@ -36,21 +36,21 @@ def train_bpe(
     with open(input_path, "rb") as f:
         num_processes = 4
         boundaries = find_chunk_boundaries(f, num_processes, b"<|endoftext|>")
-        words = []
+        words_original = []
 
         for start, end in zip(boundaries[:-1], boundaries[1:]):
             f.seek(start)
             chunk = f.read(end - start).decode("utf-8", errors="ignore")
-            words.append(pretokenize(chunk, special_tokens))
+            words_original.append(pretokenize(chunk, special_tokens))
 
-        words_original = itertools.chain.from_iterable(words)
+        words_original = itertools.chain.from_iterable(words_original)
         token_count = 256
         vocabulary = [bytes([i]) for i in range(256)]
         merges: list[tuple[bytes, bytes]] = []
 
-        words_original, words = itertools.tee(words)
+        words_original, words = itertools.tee(words_original)
         words_tokenized = []
-        cached_state = collections.defaultdict()
+        cached_state = collections.defaultdict(int)
         for word in words:
             word_bytes = word.encode("utf-8")
             words_tokenized.append(list(word_bytes))
@@ -61,29 +61,28 @@ def train_bpe(
             token_count += 1
             tokens_to_merge, _ = most_frequent_item(cached_state)
 
-            tokens_to_find = [words_tokenized.index(i) for i in tokens_to_merge]
             vocabulary.append(
-                vocabulary[tokens_to_find[0]] + vocabulary[tokens_to_find[1]]
+                vocabulary[tokens_to_merge[0]] + vocabulary[tokens_to_merge[1]]
             )
             merges.append(
-                (vocabulary[tokens_to_find[0]], vocabulary[tokens_to_find[1]])
+                (vocabulary[tokens_to_merge[0]], vocabulary[tokens_to_merge[1]])
             )
             new_token_index = len(vocabulary) - 1
 
             del cached_state[tokens_to_merge]
             for tokens in words_tokenized:
-                for i in range(len(tokens) - len(tokens_to_find)):
-                    if tokens[i : i + len(tokens_to_find)] != tokens_to_find:
+                for i in range(len(tokens) - len(tokens_to_merge)):
+                    if tokens[i : i + len(tokens_to_merge)] != tokens_to_merge:
                         continue
                     if i > 0:
-                        cached_state[(tokens[i - 1], tokens_to_find[0])] -= 1
+                        cached_state[(tokens[i - 1], tokens_to_merge[0])] -= 1
                         cached_state[(tokens[i - 1], new_token_index)] += 1
-                    if i + len(tokens_to_find) < len(tokens):
+                    if i + len(tokens_to_merge) < len(tokens):
                         cached_state[
-                            (tokens_to_find[1], tokens[i + len(tokens_to_find)])
+                            (tokens_to_merge[1], tokens[i + len(tokens_to_merge)])
                         ] -= 1
                         cached_state[
-                            (new_token_index, tokens[i + len(tokens_to_find)])
+                            (new_token_index, tokens[i + len(tokens_to_merge)])
                         ] += 1
 
         vocabulary = {i: x for i, x in enumerate(vocabulary)}
