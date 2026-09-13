@@ -13,7 +13,7 @@ class Embedding(nn.Module):
     ):
         super().__init__()
         std = 1.0
-        self.w = torch.nn.Parameter(
+        self.w = nn.Parameter(
             torch.empty(num_embeddings, embedding_dim, device=device, dtype=dtype)
         )
 

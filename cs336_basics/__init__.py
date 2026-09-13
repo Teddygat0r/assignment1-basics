@@ -3,6 +3,8 @@ from .tokenizer import train_bpe
 from .tokenizer import Tokenizer
 from .linear import Linear
 from .embedding import Embedding
+from .rmsnorm import RMSNorm
+from .swiglu import SwiGLU, SiLU
 
 try:
     __version__ = importlib.metadata.version("cs336_basics")

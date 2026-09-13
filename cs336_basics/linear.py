@@ -14,7 +14,7 @@ class Linear(nn.Module):
     ):
         super().__init__()
         std = math.sqrt(2.0 / (in_features + out_features))
-        self.w = torch.nn.Parameter(
+        self.w = nn.Parameter(
             torch.empty(out_features, in_features, device=device, dtype=dtype)
         )
 
