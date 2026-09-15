@@ -5,6 +5,7 @@ from .linear import Linear
 from .embedding import Embedding
 from .rmsnorm import RMSNorm
 from .swiglu import SwiGLU, SiLU
+from .rope import RotaryPositionalEmbedding
 
 try:
     __version__ = importlib.metadata.version("cs336_basics")
