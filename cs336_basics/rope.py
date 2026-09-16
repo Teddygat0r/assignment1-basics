@@ -5,6 +5,8 @@ import math
 
 
 class RotaryPositionalEmbedding(nn.Module):
+    cache: torch.Tensor
+
     def __init__(self, theta: float, d_k: int, max_seq_len: int, device=None):
         super().__init__()
         thetas = torch.arange(max_seq_len)
@@ -13,7 +15,10 @@ class RotaryPositionalEmbedding(nn.Module):
         cos, sin = torch.cos(thetas), torch.sin(thetas)
         dim_1 = torch.stack([cos, -sin], dim=-1)
         dim_2 = torch.stack([sin, cos], dim=-1)
-        self.cache = torch.stack([dim_1, dim_2], dim=-1).to(device=device)
+        self.register_buffer(
+            "cache",
+            torch.stack([dim_1, dim_2], dim=-1).to(device=device),
+        )
 
     def forward(self, x: torch.Tensor, token_positions: torch.Tensor) -> torch.Tensor:
         x = rearrange(x, "... (a two) -> ... a two", two=2)

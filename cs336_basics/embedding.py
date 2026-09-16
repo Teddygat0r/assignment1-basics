@@ -1,6 +1,5 @@
 import torch
 from torch import nn
-from torch import einsum
 
 
 class Embedding(nn.Module):
