@@ -100,7 +100,7 @@ class MultiheadSelfAttentionWithRope(nn.Module):
         self.dtype = dtype
 
     def forward(
-        self, x: torch.Tensor, token_positions: torch.Tensor | None
+        self, x: torch.Tensor, token_positions: torch.Tensor | None = None
     ) -> torch.Tensor:
         seq_len = x.shape[-2]
 

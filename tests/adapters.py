@@ -300,7 +300,24 @@ def run_transformer_block(
         Float[Tensor, "batch sequence_length d_model"] Tensor with the output of
         running the Transformer block on the input features while using RoPE.
     """
-    raise NotImplementedError
+    transformer = cs336_basics.TransformerBlock(
+        d_model, num_heads, d_ff, max_seq_len, theta
+    )
+
+    weights = {
+        "attn.w_q.w": weights["attn.q_proj.weight"],
+        "attn.w_k.w": weights["attn.k_proj.weight"],
+        "attn.w_v.w": weights["attn.v_proj.weight"],
+        "attn.w_o.w": weights["attn.output_proj.weight"],
+        "attn_norm.g": weights["ln1.weight"],
+        "ffn_norm.g": weights["ln2.weight"],
+        "ffn.w1": weights["ffn.w1.weight"],
+        "ffn.w2": weights["ffn.w2.weight"],
+        "ffn.w3": weights["ffn.w3.weight"],
+    }
+
+    transformer.load_state_dict(weights, strict=False)
+    return transformer(in_features)
 
 
 def run_transformer_lm(
@@ -382,7 +399,28 @@ def run_transformer_lm(
         Float[Tensor, "batch_size sequence_length vocab_size"]: Tensor with the predicted unnormalized
         next-word distribution for each token.
     """
-    raise NotImplementedError
+    transformer = cs336_basics.Transformer(
+        d_model, num_heads, d_ff, context_length, rope_theta, vocab_size, num_layers
+    )
+
+    w = {}
+    w["embedding.w"] = weights["token_embeddings.weight"]
+    for i in range(num_layers):
+        w[f"layers.{i}.attn.w_q.w"] = weights[f"layers.{i}.attn.q_proj.weight"]
+        w[f"layers.{i}.attn.w_k.w"] = weights[f"layers.{i}.attn.k_proj.weight"]
+        w[f"layers.{i}.attn.w_v.w"] = weights[f"layers.{i}.attn.v_proj.weight"]
+        w[f"layers.{i}.attn.w_o.w"] = weights[f"layers.{i}.attn.output_proj.weight"]
+        w[f"layers.{i}.attn_norm.g"] = weights[f"layers.{i}.ln1.weight"]
+        w[f"layers.{i}.ffn_norm.g"] = weights[f"layers.{i}.ln2.weight"]
+        w[f"layers.{i}.ffn.w1"] = weights[f"layers.{i}.ffn.w1.weight"]
+        w[f"layers.{i}.ffn.w2"] = weights[f"layers.{i}.ffn.w2.weight"]
+        w[f"layers.{i}.ffn.w3"] = weights[f"layers.{i}.ffn.w3.weight"]
+
+    w["o_norm.g"] = weights[f"ln_final.weight"]
+    w["out_layer.w"] = weights[f"lm_head.weight"]
+
+    transformer.load_state_dict(w, strict=False)
+    return transformer(in_indices)
 
 
 def run_rmsnorm(

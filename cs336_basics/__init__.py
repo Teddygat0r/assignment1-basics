@@ -12,6 +12,7 @@ from .attention import (
     MultiheadSelfAttention,
     MultiheadSelfAttentionWithRope,
 )
+from .transformer_lm import TransformerBlock, Transformer
 
 try:
     __version__ = importlib.metadata.version("cs336_basics")
