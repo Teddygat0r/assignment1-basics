@@ -13,6 +13,7 @@ from .attention import (
     MultiheadSelfAttentionWithRope,
 )
 from .transformer_lm import TransformerBlock, Transformer
+from .cross_entropy import cross_entropy
 
 try:
     __version__ = importlib.metadata.version("cs336_basics")
